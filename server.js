@@ -21,7 +21,7 @@ app.get('/api/version', (req, res) => {
   res.json({
     version: '1.0.2',
     download_url: 'https://github.com/MDShareef75/atoms-masjid-finder-server/releases/latest',
-    release_notes: 'Enhanced mosque search to find many more nearby mosques. Improved UI and fixed bugs.'
+    release_notes: 'Enhanced mosque search to find many more nearby mosques. Added search feature to filter mosques by name or address. Improved UI and fixed bugs.'
   });
 });
 
