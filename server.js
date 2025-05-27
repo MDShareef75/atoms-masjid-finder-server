@@ -19,7 +19,7 @@ app.get('/', (req, res) => {
 // Proxy endpoint for nearby mosques
 app.get('/api/mosques/nearby', async (req, res) => {
   try {
-    const { lat, lng, radius = 5000 } = req.query;
+    const { lat, lng, radius = 10000 } = req.query; // Increased default radius to 10km
     
     if (!lat || !lng) {
       return res.status(400).json({ 
@@ -27,14 +27,68 @@ app.get('/api/mosques/nearby', async (req, res) => {
       });
     }
     
-    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=mosque&keyword=masjid,mosque,islamic&key=${config.googleMapsApiKey}`;
+    // Make multiple searches with different parameters to find more mosques
+    const urls = [
+      // Search 1: Standard mosque search
+      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=mosque&key=${config.googleMapsApiKey}`,
+      
+      // Search 2: Keyword search for different terms
+      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&keyword=masjid,mosque,islamic,muslim,prayer&key=${config.googleMapsApiKey}`,
+      
+      // Search 3: Using text search which might find places not categorized as mosques
+      `https://maps.googleapis.com/maps/api/place/textsearch/json?location=${lat},${lng}&radius=${radius}&query=mosque+masjid+islamic+center&key=${config.googleMapsApiKey}`
+    ];
     
-    const response = await axios.get(url);
-    res.json(response.data);
+    // Run all requests in parallel
+    const responses = await Promise.all(urls.map(url => axios.get(url)));
+    
+    // Combine results and remove duplicates
+    const allPlaces = [];
+    const placeIds = new Set();
+    
+    responses.forEach(response => {
+      if (response.data.status === 'OK' && response.data.results) {
+        response.data.results.forEach(place => {
+          if (!placeIds.has(place.place_id)) {
+            placeIds.add(place.place_id);
+            allPlaces.push(place);
+          }
+        });
+      }
+    });
+    
+    res.json({
+      status: 'OK',
+      results: allPlaces
+    });
   } catch (error) {
     console.error('Error fetching nearby mosques:', error);
     res.status(500).json({ 
       error: 'Failed to fetch nearby mosques',
+      details: error.message 
+    });
+  }
+});
+
+// Proxy endpoint for text search of mosques
+app.get('/api/mosques/search', async (req, res) => {
+  try {
+    const { lat, lng, query = 'mosque', radius = 10000 } = req.query;
+    
+    if (!lat || !lng) {
+      return res.status(400).json({ 
+        error: 'Missing required parameters. Please provide lat and lng.' 
+      });
+    }
+    
+    const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?location=${lat},${lng}&radius=${radius}&query=${query}&key=${config.googleMapsApiKey}`;
+    
+    const response = await axios.get(url);
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error searching for mosques:', error);
+    res.status(500).json({ 
+      error: 'Failed to search for mosques',
       details: error.message 
     });
   }
