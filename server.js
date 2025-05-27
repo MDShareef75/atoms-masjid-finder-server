@@ -16,6 +16,15 @@ app.get('/', (req, res) => {
   res.send('Atom\'s Masjid Finder API is running');
 });
 
+// Version information endpoint
+app.get('/api/version', (req, res) => {
+  res.json({
+    version: '1.0.2',
+    download_url: 'https://github.com/MDShareef75/atoms-masjid-finder-server/releases/latest',
+    release_notes: 'Enhanced mosque search to find many more nearby mosques. Improved UI and fixed bugs.'
+  });
+});
+
 // Proxy endpoint for nearby mosques
 app.get('/api/mosques/nearby', async (req, res) => {
   try {
